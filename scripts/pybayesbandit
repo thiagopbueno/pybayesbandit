@@ -1,0 +1,116 @@
+#! /usr/bin/env python3
+
+# This file is part of pybayesbandit.
+
+# pybayesbandit is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# pybayesbandit is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with pybayesbandit. If not, see <http://www.gnu.org/licenses/>.
+
+
+from pybayesbandit.bandits.bernoulli import BernoulliBandit
+from pybayesbandit.learners.random import RandomPolicy
+from pybayesbandit.game import Game
+
+import argparse
+import time
+
+
+def parse_args():
+    description = 'Bayesian bandits in Python3.'
+    parser = argparse.ArgumentParser(description=description)
+    parser.add_argument(
+        'learner',
+        type=str, choices=['random'],
+        help='learner type'
+    )
+    parser.add_argument(
+        'bandit',
+        type=str, choices=['bernoulli'],
+        help='bandit type'
+    )
+    parser.add_argument(
+        '-p', '--params',
+        nargs='+', type=float, default=[],
+        help='bandit parameters'
+    )
+    parser.add_argument(
+        '-e', '--episodes',
+        type=int, default=200,
+        help='number of simulation episodes (default=200)'
+    )
+    parser.add_argument(
+        '-hr', '--horizon',
+        type=int, default=100,
+        help='number of timesteps in each episode (default=100)'
+    )
+    parser.add_argument(
+        '-v', '--verbose',
+        action='store_true',
+        help='verbose mode'
+    )
+    return parser.parse_args()
+
+
+def show_args(args):
+    if args.verbose:
+        print('>> learner  = {}'.format(args.learner))
+        print('>> bandit   = {}({})'.format(args.bandit, args.params))
+        print('>> episodes = {}'.format(args.episodes))
+        print('>> horizon  = {}'.format(args.horizon))
+
+
+def make_bandit(args):
+    bandits = {
+        'bernoulli': BernoulliBandit
+    }
+    model = bandits[args.bandit]
+    probs = args.params
+    return model(probs)
+
+
+def make_learner(args):
+    learners = {
+        'random': RandomPolicy
+    }
+    policy = learners[args.learner]
+    actions = len(args.params)
+    return policy(actions, args.horizon)
+
+
+def run(game, args):
+    start = time.time()
+    results = game.run(args.episodes, args.horizon)
+    end = time.time()
+    uptime = end - start
+    return results, uptime
+
+
+def report(results):
+    avg_reward, std_reward, avg_regret, std_regret = results
+    print('Results:')
+    print('>> Reward = {:8.4f} ± {:3.4f}'.format(avg_reward, std_reward))
+    print('>> Regret = {:8.4f} ± {:3.4f}'.format(avg_regret, std_regret))
+
+
+if __name__ == '__main__':
+    args = parse_args()
+
+    bandit = make_bandit(args)
+    learner = make_learner(args)
+    game = Game(bandit, learner)
+
+    print('\nRunning pybayesbandit ...')
+    show_args(args)
+    results, uptime = run(game, args)
+    print('Done in {:.3f} sec.\n'.format(uptime))
+
+    report(results)
