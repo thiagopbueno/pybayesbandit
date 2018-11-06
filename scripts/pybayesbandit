@@ -20,6 +20,7 @@ from pybayesbandit.bandits.bernoulli import BernoulliBandit
 from pybayesbandit.learners.random import RandomPolicy
 from pybayesbandit.learners.ucb import UCBPolicy
 from pybayesbandit.learners.thompson import ThompsonSamplingPolicy
+from pybayesbandit.learners.vi import BetaBernoulliVIPolicy
 from pybayesbandit.game import Game
 
 import argparse
@@ -31,7 +32,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument(
         'learner',
-        type=str, choices=['random', 'ucb', 'thompson'],
+        type=str, choices=['random', 'ucb', 'thompson', 'vi'],
         help='learner type'
     )
     parser.add_argument(
@@ -83,19 +84,12 @@ def make_learner(args):
     learners = {
         'random': RandomPolicy,
         'ucb': UCBPolicy,
-        'thompson': ThompsonSamplingPolicy
+        'thompson': ThompsonSamplingPolicy,
+        'vi': BetaBernoulliVIPolicy
     }
     policy = learners[args.learner]
     actions = len(args.params)
     return policy(actions, args.horizon)
-
-
-def run(game, args):
-    start = time.time()
-    results = game.run(args.episodes, args.horizon)
-    end = time.time()
-    uptime = end - start
-    return results, uptime
 
 
 def report(results):
@@ -103,18 +97,24 @@ def report(results):
     print('Results:')
     print('>> Reward = {:8.4f} ± {:3.4f}'.format(avg_reward, std_reward))
     print('>> Regret = {:8.4f} ± {:3.4f}'.format(avg_regret, std_regret))
+    print()
 
 
 if __name__ == '__main__':
     args = parse_args()
 
+    print('\nRunning pybayesbandit ...')
+    show_args(args)
+
+    start = time.time()
+
     bandit = make_bandit(args)
     learner = make_learner(args)
     game = Game(bandit, learner)
 
-    print('\nRunning pybayesbandit ...')
-    show_args(args)
-    results, uptime = run(game, args)
-    print('Done in {:.3f} sec.\n'.format(uptime))
+    results = game.run(args.episodes, args.horizon)
+
+    end = time.time()
+    print('Done in {:.3f} sec.\n'.format(end - start))
 
     report(results)
