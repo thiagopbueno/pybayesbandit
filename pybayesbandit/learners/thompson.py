@@ -1,3 +1,4 @@
+
 # This file is part of pybayesbandit.
 
 # pybayesbandit is free software: you can redistribute it and/or modify
@@ -19,24 +20,23 @@ from pybayesbandit.learners import Learner
 import numpy as np
 
 
-class UCBPolicy(Learner):
+class ThompsonSamplingPolicy(Learner):
 
     def __init__(self, actions, T):
         self.actions = actions
         self.reset()
 
     def __call__(self):
-        if self.n < self.actions:
-            return self.n
-        else:
-            return np.argmax(self.avg + np.sqrt(2 * np.log(self.n) / self.counts))
+        samples = [np.random.beta(alpha, beta) for alpha, beta in self.betas]
+        return np.argmax(samples)
 
     def update(self, action, reward):
-        self.n += 1
-        self.counts[action] += 1
-        self.avg[action] = self.avg[action] + (1 / self.counts[action]) * (reward - self.avg[action])
+        alpha, beta = self.betas[action]
+        if reward == 1:
+            alpha += 1
+        else:
+            beta += 1
+        self.betas[action] = (alpha, beta)
 
     def reset(self):
-        self.avg = np.zeros(self.actions)
-        self.counts = np.zeros(self.actions)
-        self.n = 0
+        self.betas = [(1.0, 1.0)] * self.actions
