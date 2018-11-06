@@ -16,6 +16,8 @@
 
 from pybayesbandit.mdp import BeliefMDP
 
+import numpy as np
+
 
 class BetaBernoulliMDP(BeliefMDP):
 

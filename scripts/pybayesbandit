@@ -21,6 +21,7 @@ from pybayesbandit.learners.random import RandomPolicy
 from pybayesbandit.learners.ucb import UCBPolicy
 from pybayesbandit.learners.thompson import ThompsonSamplingPolicy
 from pybayesbandit.learners.vi import BetaBernoulliVIPolicy
+from pybayesbandit.learners.uct import BetaBernoulliUCTPolicy
 from pybayesbandit.game import Game
 
 import argparse
@@ -32,7 +33,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument(
         'learner',
-        type=str, choices=['random', 'ucb', 'thompson', 'vi'],
+        type=str, choices=['random', 'ucb', 'thompson', 'vi', 'uct'],
         help='learner type'
     )
     parser.add_argument(
@@ -85,7 +86,8 @@ def make_learner(args):
         'random': RandomPolicy,
         'ucb': UCBPolicy,
         'thompson': ThompsonSamplingPolicy,
-        'vi': BetaBernoulliVIPolicy
+        'vi': BetaBernoulliVIPolicy,
+        'uct': BetaBernoulliUCTPolicy
     }
     policy = learners[args.learner]
     actions = len(args.params)
