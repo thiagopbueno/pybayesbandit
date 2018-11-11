@@ -21,7 +21,7 @@ import numpy as np
 
 class RandomPolicy(Learner):
 
-    def __init__(self, actions, T):
+    def __init__(self, actions, T, params=None):
         self.actions = actions
 
     def __call__(self):

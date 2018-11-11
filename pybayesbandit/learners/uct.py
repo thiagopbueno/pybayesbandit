@@ -54,15 +54,15 @@ class UCT():
         self.trials = trials
         self.nodes = {}
 
-    def __call__(self, T):
+    def __call__(self, maxdepth):
         start = tuple(self._start)
         n0 = Node(start)
         n0.visits = 0
-        n0.value = self._init_V_fn(n0, T)
+        n0.value = self._init_V_fn(n0, maxdepth)
         n0.succ = []
         self.nodes[n0] = n0
         for _ in range(self.trials):
-            self.rollout(n0, T)
+            self.rollout(n0, maxdepth)
         values = [a.value for a in n0.succ]
         return n0.succ[np.argmax(values)].action
 
@@ -139,22 +139,24 @@ class UCT():
 
 class BetaBernoulliUCTPolicy(Learner):
 
-    def __init__(self, actions, T, trials=100):
+    def __init__(self, actions, T, params):
         self.actions = actions
         self.T = T
-        self.trials = trials
+        self.trials = params.trials
+        self.maxdepth = params.maxdepth
         self._mdp = BetaBernoulliMDP(self.actions)
         self.reset()
 
     def __call__(self):
         uct = UCT(self._mdp, self._belief, self.trials)
-        return uct(self._T)
+        depth = min(self._step, self.maxdepth)
+        return uct(depth)
 
     def update(self, action, reward):
         alpha, beta = self._belief[action]
         self._belief[action] = (alpha + reward, beta + 1 - reward)
-        self._T -= 1
+        self._step -= 1
 
     def reset(self):
-        self._T = self.T
+        self._step = self.T
         self._belief = self._mdp.start

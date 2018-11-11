@@ -53,7 +53,7 @@ class ValueIteration():
 
 class BetaBernoulliVIPolicy(Learner):
 
-    def __init__(self, actions, T):
+    def __init__(self, actions, T, params=None):
         self.actions = actions
         self.T = T
         self._solve()

@@ -47,6 +47,16 @@ def parse_args():
         help='bandit parameters'
     )
     parser.add_argument(
+        '-d', '--maxdepth',
+        type=int, default=10,
+        help='maximum number of timesteps in the tree lookahead (default=10)'
+    )
+    parser.add_argument(
+        '-t', '--trials',
+        type=int, default=30,
+        help='number of trials in Monte-Carlo sampling (default=30)'
+    )
+    parser.add_argument(
         '-e', '--episodes',
         type=int, default=200,
         help='number of simulation episodes (default=200)'
@@ -66,7 +76,10 @@ def parse_args():
 
 def show_args(args):
     if args.verbose:
-        print('>> learner  = {}'.format(args.learner))
+        if args.learner == 'uct':
+            print('>> learner  = {}(trials={}, maxdepth={})'.format(args.learner, args.trials, args.maxdepth))
+        else:
+            print('>> learner  = {}'.format(args.learner))
         print('>> bandit   = {}({})'.format(args.bandit, args.params))
         print('>> episodes = {}'.format(args.episodes))
         print('>> horizon  = {}'.format(args.horizon))
@@ -91,7 +104,7 @@ def make_learner(args):
     }
     policy = learners[args.learner]
     actions = len(args.params)
-    return policy(actions, args.horizon)
+    return policy(actions, args.horizon, args)
 
 
 def report(results):
