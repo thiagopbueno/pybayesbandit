@@ -18,11 +18,12 @@ from pybayesbandit.learners import Learner
 from pybayesbandit.mdp.beta_bernoulli import BetaBernoulliMDP
 
 import numpy as np
+import sys
 
 
 class Node():
 
-    def __init__(self, state, action=None, visits=0, value=0.0, succ=None):
+    def __init__(self, state, action=None, visits=None, value=None, succ=None):
         self.state = state
         self.action = action
         self.visits = visits
@@ -39,7 +40,10 @@ class Node():
         return hash((self.state, self.action))
 
     def __eq__(self, other):
-        return hash(self) == hash(other)
+        return self.state == other.state and self.action == other.action
+
+    def __repr__(self):
+        return 'Node(state={}, action={}, visits={}, value={}, succ={})'.format(self.state, self.action, self.visits, self.value, self.succ)
 
 
 class UCT():
