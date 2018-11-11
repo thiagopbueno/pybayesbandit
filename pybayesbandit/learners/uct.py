@@ -57,6 +57,9 @@ class UCT():
     def __call__(self, T):
         start = tuple(self._start)
         n0 = Node(start)
+        n0.visits = 0
+        n0.value = self._init_V_fn(n0, T)
+        n0.succ = []
         self.nodes[n0] = n0
         for _ in range(self.trials):
             self.rollout(n0, T)
@@ -64,58 +67,74 @@ class UCT():
         return n0.succ[np.argmax(values)].action
 
     def rollout(self, node, depth):
-        r = 0.0
+        res = 0.0
 
         if node.is_decision():
-            if node.succ is None:
-                node.succ = []
-                total_visits = 0
-                total_value = 0
-                for a in range(self._mdp.actions):
-                    visits, value = self._heuristics(node, a, depth)
-                    total_visits += visits
-                    total_value += value
-                    n = Node(node.state, a, visits, value)
-                    self.nodes[n] = n
-                    node.succ.append(n)
-                node.visits = total_visits
-                node.value = total_value / self._mdp.actions
-            next_node = self.ucb(node)
+            if self._decision_node_has_unvisited_successor(node):
+                next_node = self._get_decision_node_unvisited_successor(node, depth)
+                node.succ.append(next_node)
+                self.nodes[next_node] = next_node
+            else:
+                next_node = self.ucb(node)
         else:
             state = list(node.state)
             action = node.action
             next_state = self._mdp.sample(state, action)
-            r = self._mdp.reward(state, action, next_state)
+            res = self._mdp.reward(state, action, next_state)
+
             depth -= 1
             if depth == 0:
-                return r
+                return res
+
             next_node = Node(tuple(next_state))
             if next_node in self.nodes:
                 next_node = self.nodes[next_node]
             else:
+                next_node.visits = 0
+                next_node.value = self._init_V_fn(next_node, depth)
+                next_node.succ = []
+                node.succ.append(next_node)
                 self.nodes[next_node] = next_node
 
-        r += self.rollout(next_node, depth)
-        self.update(node, r)
-        return r
+        res += self.rollout(next_node, depth)
+        self.update(node, res)
+
+        return res
 
     def ucb(self, node):
+        best_action = None
+        best_Q = -sys.maxsize
         for a in node.succ:
             if a.visits == 0:
                 return a
-        bounds = [a.value + np.sqrt(2 * np.log(node.visits) / a.visits) for a in node.succ]
-        index = np.argmax(bounds)
-        return node.succ[index]
+            q = a.value + np.sqrt(2 * np.log(node.visits) / a.visits)
+            if q > best_Q:
+                best_Q = q
+                best_action = a
+        return best_action
 
     def update(self, node, r):
         node.visits += 1
         node.value += 1 / node.visits * (r - node.value)
 
-    def _heuristics(self, node, a, T):
+    def _decision_node_has_unvisited_successor(self, node):
+        return (node.succ is None or len(node.succ) != self._mdp.actions)
+
+    def _get_decision_node_unvisited_successor(self, node, depth):
+        state = node.state
+        action = len(node.succ) if node.succ is not None else 0
+        visits = 1
+        value = self._init_Q_fn(node, action, depth)
+        succ = []
+        return Node(state, action, visits, value, succ)
+
+    def _init_Q_fn(self, node, a, d):
         alpha, beta = node.state[a]
-        value = T * alpha / (alpha + beta)
-        visits = 0.1 * self._trials
-        return visits, value
+        h = d * alpha / (alpha + beta)
+        return h
+
+    def _init_V_fn(self, node, d):
+        return 0.0
 
 
 class BetaBernoulliUCTPolicy(Learner):
