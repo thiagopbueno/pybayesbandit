@@ -33,6 +33,9 @@ class BernoulliBandit(Bandit):
         assert 0 <= action < self.size
         return np.random.binomial(1, self._probs[action])
 
-    def regret(self, actions):
+    def regret(self, action):
+        return self._optimal - self._probs[action]
+
+    def total_regret(self, actions):
         T = len(actions)
         return T * self._optimal - np.sum(self._probs[a] for a in actions)

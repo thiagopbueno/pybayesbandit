@@ -108,10 +108,10 @@ def make_learner(args):
 
 
 def report(results):
-    avg_reward, std_reward, avg_regret, std_regret = results
+    rewards, regrets = results
     print('Results:')
-    print('>> Reward = {:8.4f} ± {:3.4f}'.format(avg_reward, std_reward))
-    print('>> Regret = {:8.4f} ± {:3.4f}'.format(avg_regret, std_regret))
+    print('>> Reward = {:8.4f} ± {:3.4f}'.format(rewards[0][-1], rewards[1][-1]))
+    print('>> Regret = {:8.4f} ± {:3.4f}'.format(regrets[0][-1], regrets[1][-1]))
     print()
 
 

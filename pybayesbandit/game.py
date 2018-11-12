@@ -25,27 +25,35 @@ class Game():
 
     def episode(self, T):
         self.learner.reset()
-        rewards = []
-        actions = []
+
+        actions = np.zeros(T, dtype=np.float32)
+        rewards = np.zeros(T, dtype=np.float32)
+        regrets = np.zeros(T, dtype=np.float32)
+
         for t in range(T):
             a = self.learner()
             r = self.bandit(a)
             self.learner.update(a, r)
-            actions.append(a)
-            rewards.append(r)
-        total = np.sum(rewards)
-        regret = self.bandit.regret(actions)
-        return total, regret
+
+            actions[t] = a
+            rewards[t] = r
+            regrets[t] = self.bandit.regret(a)
+
+        return actions, rewards, regrets
 
     def run(self, N, T):
-        regrets = []
-        totals = []
+        total_rewards = np.zeros([N, T], dtype=np.float32)
+        total_regrets = np.zeros([N, T], dtype=np.float32)
+
         for n in range(N):
-            total, regret = self.episode(T)
-            totals.append(total)
-            regrets.append(regret)
-        avg_total_reward = np.mean(totals)
-        stddev_total_reward = np.std(totals)
-        avg_regret = np.mean(regrets)
-        stddev_regret = np.std(regrets)
-        return avg_total_reward, stddev_total_reward, avg_regret, stddev_regret
+            actions, rewards, regrets = self.episode(T)
+            total_rewards[n] = np.cumsum(rewards, axis=0)
+            total_regrets[n] = np.cumsum(regrets, axis=0)
+
+        avg_total_rewards = np.mean(total_rewards, axis=0)
+        std_total_rewards = np.std(total_rewards, axis=0)
+
+        avg_total_regrets = np.mean(total_regrets, axis=0)
+        std_total_regrets = np.std(total_regrets, axis=0)
+
+        return (avg_total_rewards, std_total_rewards), (avg_total_regrets, std_total_regrets)
