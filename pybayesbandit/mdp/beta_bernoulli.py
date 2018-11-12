@@ -45,8 +45,11 @@ class BetaBernoulliMDP(BeliefMDP):
 
         return probs_and_next_beliefs
 
+    # def reward(self, belief, action, next_belief):
+    #     eu_belief = max(alpha / (alpha + beta) for alpha, beta in belief)
+    #     eu_next_belief = max(alpha / (alpha + beta) for alpha, beta in next_belief)
+    #     evof = eu_next_belief - eu_belief
+    #     return evof
+
     def reward(self, belief, action, next_belief):
-        eu_belief = max(alpha / (alpha + beta) for alpha, beta in belief)
-        eu_next_belief = max(alpha / (alpha + beta) for alpha, beta in next_belief)
-        evof = eu_next_belief - eu_belief
-        return evof
+        return max(alpha / (alpha + beta) for alpha, beta in belief)
