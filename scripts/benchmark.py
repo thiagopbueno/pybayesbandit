@@ -24,76 +24,77 @@ from pybayesbandit.learners.vi import BetaBernoulliVIPolicy
 from pybayesbandit.learners.uct import BetaBernoulliUCTPolicy
 from pybayesbandit.game import Game
 
-import argparse
+from collections import namedtuple
 import matplotlib.pyplot as plt
 import numpy as np
 import time
+import sys
 
+UCTParams = namedtuple('UCTParams', 'trials maxdepth')
 
 policies = {
-    'Random': RandomPolicy,
-    'UCB': UCBPolicy,
+    # 'Random': RandomPolicy,
+    'UCB1': UCBPolicy,
     'TS': ThompsonSamplingPolicy,
-    'VI': BetaBernoulliVIPolicy,
-    'UCT': BetaBernoulliUCTPolicy
+    # 'VI': BetaBernoulliVIPolicy,
+    'UCT(T=15, D=5)': (BetaBernoulliUCTPolicy, UCTParams(trials=15, maxdepth=5)),
+    'UCT(T=15, D=15)': (BetaBernoulliUCTPolicy, UCTParams(trials=15, maxdepth=15)),
+    'UCT(T=15, D=30)': (BetaBernoulliUCTPolicy, UCTParams(trials=15, maxdepth=30)),
 }
 
-probs=[0.42, 0.35, 0.81]
-bandit = BernoulliBandit(probs)
+N = 10
+T = 1000
 
-N = 200
-horizons = range(10, 41, 5)
+Ks = [2, 10, 30]
+deltas = [0.05, 0.25, 0.40]
 
-results = {}
-learners = {}
-for name, policy in policies.items():
-    print('\n{} is playing ...'.format(name))
+fig = plt.figure(figsize=(20, 10))
 
-    avg_regrets, std_regrets, avg_rewards, std_rewards = [], [], [], []
-    learners[name] = []
+i = 1
+for delta in deltas:
 
-    for T in horizons:
-        start = time.time()
+    for K in Ks:
 
-        learner = policy(bandit.size, T)
-        learners[name].append(learner)
+        probs = [0.5] * (K - 1) + [0.5 + delta]
+        bandit = BernoulliBandit(probs)
 
-        print('T = {:4d}: '.format(T), end='')
-        game = Game(bandit, learner)
-        avg_reward, std_reward, avg_regret, std_regret = game.run(N, T)
+        print('\n>> Bernoulli(K={}, delta={}) ...'.format(K, delta))
 
-        end = time.time()
-        uptime = end - start
-        print('done in {:.4f} sec.'.format(uptime))
+        results = {}
 
-        avg_regrets.append(avg_regret)
-        std_regrets.append(std_regret)
-        avg_rewards.append(avg_reward)
-        std_rewards.append(std_reward)
+        for name, policy in policies.items():
+            print('\n{} is playing ... '.format(name), end='')
 
-    results[name] = (
-        np.array(avg_regrets), np.array(std_regrets),
-        np.array(avg_rewards), np.array(std_rewards)
-    )
+            start = time.time()
 
-fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 5))
+            if isinstance(policy, tuple):
+                learner = policy[0](bandit.size, T, policy[1])
+            else:
+                learner = policy(bandit.size, T)
 
-for name, (avg_regrets, std_regrets, avg_rewards, std_rewards) in results.items():
-    ax1.plot(horizons, avg_regrets, label=name)
-    ax1.fill_between(horizons, avg_regrets - std_regrets, avg_regrets + std_regrets, alpha=0.2)
-    ax2.plot(horizons, avg_rewards, label=name)
-    ax2.fill_between(horizons, avg_rewards - std_rewards, avg_rewards + std_rewards, alpha=0.2)
+            game = Game(bandit, learner)
+            results[name] = game.run(N, T)
 
-ax1.set_title('Regret', fontweight='bold')
-ax1.set_xlabel('Horizon')
-ax1.set_xticks(horizons)
-ax1.legend()
-ax1.grid()
+            end = time.time()
+            uptime = end - start
+            print('done in {:.4f} sec.'.format(uptime))
 
-ax2.set_title('Reward', fontweight='bold')
-ax2.set_xlabel('Horizon')
-ax2.set_xticks(horizons)
-ax2.legend()
-ax2.grid()
+        fig.add_subplot(len(deltas), len(Ks), i)
 
-plt.show()
+        rounds = range(1, T+1)
+        for name, (rewards, regrets) in results.items():
+            plt.plot(rounds, regrets[0], label=name)
+            # plt.fill_between(rounds, regrets[0] - regrets[1], regrets[0] + regrets[1], alpha=0.2)
+
+        plt.title('Regret (K={}, delta={})'.format(K, delta), fontweight='bold')
+        plt.xlabel('rounds (t)')
+        plt.xticks(np.arange(1, 11, dtype=np.int32) * int(T / 10))
+        plt.legend()
+        plt.grid()
+        plt.tight_layout()
+
+        i += 1
+
+
+filename = sys.argv[1]
+plt.savefig('{}.pdf'.format(filename), format='pdf')
