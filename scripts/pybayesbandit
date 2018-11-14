@@ -25,6 +25,7 @@ from pybayesbandit.learners.uct import BetaBernoulliUCTPolicy
 from pybayesbandit.game import Game
 
 import argparse
+import matplotlib.pyplot as plt
 import time
 
 
@@ -115,6 +116,16 @@ def report(results):
     print()
 
 
+def plot(results):
+    plt.plot(results[1][0])
+    plt.title('Regret', fontweight='bold')
+    plt.ylabel('cumulative regret')
+    plt.xlabel('rounds (t)')
+    plt.grid()
+    plt.tight_layout()
+    plt.show()
+
+
 if __name__ == '__main__':
     args = parse_args()
 
@@ -133,3 +144,4 @@ if __name__ == '__main__':
     print('Done in {:.3f} sec.\n'.format(end - start))
 
     report(results)
+    plot(results)
