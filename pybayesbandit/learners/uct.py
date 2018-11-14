@@ -131,10 +131,31 @@ class UCT():
     def _init_Q_fn(self, node, a, d):
         alpha, beta = node.state[a]
         h = d * alpha / (alpha + beta)
+        # h = self._random_rollouts(node, a, d)
         return h
 
     def _init_V_fn(self, node, d):
         return 0.0
+
+    def _random_rollouts(self, node, a, d):
+        res = 0.0
+
+        for i in range(self.trials):
+
+            state = list(node.state)
+            action = a
+            next_state = self._mdp.sample(state, action)
+            r = self._mdp.reward(state, action, next_state)
+
+            for step in range(d-1):
+                state = next_state
+                action = np.random.randint(0, self._mdp.actions)
+                next_state = self._mdp.sample(state, action)
+                r += self._mdp.reward(state, action, next_state)
+
+            res += 1 / (i + 1) * (r - res)
+
+        return res
 
 
 class BetaBernoulliUCTPolicy(Learner):
