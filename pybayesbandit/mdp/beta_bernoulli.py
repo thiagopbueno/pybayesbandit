@@ -26,7 +26,7 @@ class BetaBernoulliMDP(BeliefMDP):
 
     @property
     def start(self):
-        return [(1, 1)] * self.actions
+        return tuple([(1, 1)] * self.actions)
 
     def sample(self, belief, action):
         probs, next_beliefs = zip(*self.transition(belief, action))
@@ -38,8 +38,8 @@ class BetaBernoulliMDP(BeliefMDP):
 
         probs_and_next_beliefs = []
         for r in [0, 1]:
-            next_belief = belief.copy()
-            next_belief[action] = (alpha + r, beta + 1 - r)
+            next_belief = tuple((params[0] + r, params[1] + 1 - r) if i == action else params \
+                for i, params in enumerate(belief))
             prob = (r * alpha + (1 - r) * beta) / (alpha + beta)
             probs_and_next_beliefs.append((prob, next_belief))
 

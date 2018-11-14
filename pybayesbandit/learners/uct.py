@@ -16,146 +16,40 @@
 
 from pybayesbandit.learners import Learner
 from pybayesbandit.mdp.beta_bernoulli import BetaBernoulliMDP
+from pybayesbandit.search.mcts import MCTS
 
 import numpy as np
 import sys
 
 
-class Node():
+class UCT(MCTS):
 
-    def __init__(self, state, action=None, visits=None, value=None, succ=None):
-        self.state = state
-        self.action = action
-        self.visits = visits
-        self.value = value
-        self.succ = succ
+    def __init__(self, mdp, start):
+        super().__init__(mdp, start)
 
-    def is_decision(self):
-        return self.action is None
-
-    def is_chance(self):
-        return self.action is not None
-
-    def __hash__(self):
-        return hash((self.state, self.action))
-
-    def __eq__(self, other):
-        return self.state == other.state and self.action == other.action
-
-    def __repr__(self):
-        return 'Node(state={}, action={}, visits={}, value={}, succ={})'.format(self.state, self.action, self.visits, self.value, self.succ)
-
-
-class UCT():
-
-    def __init__(self, mdp, start, trials=100):
-        self._mdp = mdp
-        self._start = start
-        self.trials = trials
-        self.nodes = {}
-
-    def __call__(self, maxdepth):
-        start = tuple(self._start)
-        n0 = Node(start)
-        n0.visits = 0
-        n0.value = self._init_V_fn(n0, maxdepth)
-        n0.succ = []
-        self.nodes[n0] = n0
-        for _ in range(self.trials):
-            self.rollout(n0, maxdepth)
-        values = [a.value for a in n0.succ]
-        return n0.succ[np.argmax(values)].action
-
-    def rollout(self, node, depth):
-        res = 0.0
-
-        if node.is_decision():
-            if self._decision_node_has_unvisited_successor(node):
-                next_node = self._get_decision_node_unvisited_successor(node, depth)
-                node.succ.append(next_node)
-                self.nodes[next_node] = next_node
-            else:
-                next_node = self.ucb(node)
-        else:
-            state = list(node.state)
-            action = node.action
-            next_state = self._mdp.sample(state, action)
-            res = self._mdp.reward(state, action, next_state)
-
-            depth -= 1
-            if depth == 0:
-                return res
-
-            next_node = Node(tuple(next_state))
-            if next_node in self.nodes:
-                next_node = self.nodes[next_node]
-            else:
-                next_node.visits = 0
-                next_node.value = self._init_V_fn(next_node, depth)
-                next_node.succ = []
-                node.succ.append(next_node)
-                self.nodes[next_node] = next_node
-
-        res += self.rollout(next_node, depth)
-        self.update(node, res)
-
-        return res
-
-    def ucb(self, node):
+    def tree_policy(self, node, C=2):
         best_action = None
-        best_Q = -sys.maxsize
+        best_q_value = -sys.maxsize
+
         for a in node.succ:
             if a.visits == 0:
                 return a
-            q = a.value + np.sqrt(2 * np.log(node.visits) / a.visits)
-            if q > best_Q:
-                best_Q = q
+
+            q = a.value + C * np.sqrt(2 * np.log(node.visits) / a.visits)
+
+            if q > best_q_value:
+                best_q_value = q
                 best_action = a
+
         return best_action
 
-    def update(self, node, r):
-        node.visits += 1
-        node.value += 1 / node.visits * (r - node.value)
+    def default_policy(self, state):
+        return np.random.randint(0, self.mdp.actions)
 
-    def _decision_node_has_unvisited_successor(self, node):
-        return (node.succ is None or len(node.succ) != self._mdp.actions)
-
-    def _get_decision_node_unvisited_successor(self, node, depth):
-        state = node.state
-        action = len(node.succ) if node.succ is not None else 0
-        visits = 1
-        value = self._init_Q_fn(node, action, depth)
-        succ = []
-        return Node(state, action, visits, value, succ)
-
-    def _init_Q_fn(self, node, a, d):
-        alpha, beta = node.state[a]
+    def init_q_value(self, node, d):
+        alpha, beta = node.state[node.action]
         h = d * alpha / (alpha + beta)
-        # h = self._random_rollouts(node, a, d)
         return h
-
-    def _init_V_fn(self, node, d):
-        return 0.0
-
-    def _random_rollouts(self, node, a, d):
-        res = 0.0
-
-        for i in range(self.trials):
-
-            state = list(node.state)
-            action = a
-            next_state = self._mdp.sample(state, action)
-            r = self._mdp.reward(state, action, next_state)
-
-            for step in range(d-1):
-                state = next_state
-                action = np.random.randint(0, self._mdp.actions)
-                next_state = self._mdp.sample(state, action)
-                r += self._mdp.reward(state, action, next_state)
-
-            res += 1 / (i + 1) * (r - res)
-
-        return res
 
 
 class BetaBernoulliUCTPolicy(Learner):
@@ -164,20 +58,21 @@ class BetaBernoulliUCTPolicy(Learner):
         self.actions = actions
         self.T = T
         self.trials = params.trials
-        self.maxdepth = params.maxdepth
-        self._mdp = BetaBernoulliMDP(self.actions)
+        self.max_depth = params.maxdepth
+        self.mdp = BetaBernoulliMDP(self.actions)
         self.reset()
 
     def __call__(self):
-        uct = UCT(self._mdp, self._belief, self.trials)
-        depth = min(self._step, self.maxdepth)
-        return uct(depth)
+        uct = UCT(self.mdp, self._belief)
+        depth = min(self._step, self.max_depth)
+        return uct(depth, self.trials)
 
     def update(self, action, reward):
         alpha, beta = self._belief[action]
-        self._belief[action] = (alpha + reward, beta + 1 - reward)
+        self._belief = tuple((params[0] + reward, params[1] + 1 - reward) if i == action else params \
+                for i, params in enumerate(self._belief))
         self._step -= 1
 
     def reset(self):
         self._step = self.T
-        self._belief = self._mdp.start
+        self._belief = self.mdp.start

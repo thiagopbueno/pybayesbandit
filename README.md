@@ -80,11 +80,11 @@ Running pybayesbandit ...
 >> bandit   = bernoulli([0.5, 0.8, 0.3])
 >> episodes = 100
 >> horizon  = 50
-Done in 25.503 sec.
+Done in 8.262 sec.
 
 Results:
->> Reward =  36.7400 ± 5.3191
->> Regret =   3.2210 ± 5.1306
+>> Reward =  36.1500 ± 5.2103
+>> Regret =   4.1380 ± 4.6643
 ```
 
 ## License
