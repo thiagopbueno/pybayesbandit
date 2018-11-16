@@ -16,6 +16,8 @@
 from pybayesbandit.learners import Learner
 from pybayesbandit.mdp.beta_bernoulli import BetaBernoulliMDP
 
+import sys
+
 
 class ValueIteration():
 
@@ -31,17 +33,17 @@ class ValueIteration():
         if T == 0:
             return (None, 0.0)
 
-        if (T, tuple(belief)) in self._V:
-            return self._V[(T, tuple(belief))]
+        if (T, belief) in self._V:
+            return self._V[(T, belief)]
 
-        action, value = None, -1
+        action, value = None, -sys.maxsize
         for a in range(self._mdp.actions):
             Q = self.Q(a, belief, T)
             if Q > value:
                 action = a
                 value = Q
 
-        self._V[(T, tuple(belief))] = (action, value)
+        self._V[(T, belief)] = (action, value)
         return (action, value)
 
     def Q(self, action, belief, T):
@@ -65,12 +67,13 @@ class BetaBernoulliVIPolicy(Learner):
         self._V = self._vi(self.T)
 
     def __call__(self):
-        action, _ = self._V[(self._T, tuple(self._belief))]
+        action, _ = self._V[(self._T, self._belief)]
         return action
 
     def update(self, action, reward):
         alpha, beta = self._belief[action]
-        self._belief[action] = (alpha + reward, beta + 1 - reward)
+        self._belief = tuple((params[0] + reward, params[1] + 1 - reward) if i == action else params \
+                for i, params in enumerate(self._belief))
         self._T -= 1
 
     def reset(self):
