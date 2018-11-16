@@ -37,15 +37,15 @@ policies = {
     'UCB1': UCBPolicy,
     'TS': ThompsonSamplingPolicy,
     # 'VI': BetaBernoulliVIPolicy,
-    'UCT(T=15, D=5)': (BetaBernoulliUCTPolicy, UCTParams(trials=15, maxdepth=5)),
     'UCT(T=15, D=15)': (BetaBernoulliUCTPolicy, UCTParams(trials=15, maxdepth=15)),
     'UCT(T=15, D=30)': (BetaBernoulliUCTPolicy, UCTParams(trials=15, maxdepth=30)),
+    'UCT(T=15, D=100)': (BetaBernoulliUCTPolicy, UCTParams(trials=15, maxdepth=100))
 }
 
 N = 10
 T = 1000
 
-Ks = [2, 10, 30]
+Ks = [2, 10, 20]
 deltas = [0.05, 0.25, 0.40]
 
 fig = plt.figure(figsize=(20, 10))
@@ -58,12 +58,12 @@ for delta in deltas:
         probs = [0.5] * (K - 1) + [0.5 + delta]
         bandit = BernoulliBandit(probs)
 
-        print('\n>> Bernoulli(K={}, delta={}) ...'.format(K, delta))
+        print('\n>> Bernoulli(K={}, delta={}) ...\n'.format(K, delta))
 
         results = {}
 
         for name, policy in policies.items():
-            print('\n{} is playing ... '.format(name), end='')
+            print('{} is playing ... '.format(name), end='')
 
             start = time.time()
 
