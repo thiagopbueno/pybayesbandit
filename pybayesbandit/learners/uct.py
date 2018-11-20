@@ -24,8 +24,9 @@ import sys
 
 class UCT(MCTS):
 
-    def __init__(self, mdp, start):
-        super().__init__(mdp, start)
+    def __init__(self, mdp):
+        super().__init__(mdp)
+        self.h = {}
 
     def tree_policy(self, node, C=2):
         best_action = None
@@ -48,7 +49,15 @@ class UCT(MCTS):
 
     def init_q_value(self, node, d):
         alpha, beta = node.state[node.action]
-        h = d * alpha / (alpha + beta)
+        h = (self.horizon - d) * alpha / (alpha + beta)
+        return h
+
+    def heuristic(self, state):
+        if state in self.h:
+            return self.h[state]
+        best_mean = max(alpha / (alpha + beta) for (alpha, beta) in state)
+        h = (self.horizon - self.max_depth) * best_mean
+        self.h[state] = h
         return h
 
 
@@ -59,13 +68,15 @@ class BetaBernoulliUCTPolicy(Learner):
         self.T = T
         self.trials = params.trials
         self.max_depth = params.maxdepth
+        self.C = params.C
         self.mdp = BetaBernoulliMDP(self.actions)
         self.reset()
 
     def __call__(self):
-        uct = UCT(self.mdp, self._belief)
         depth = min(self._step, self.max_depth)
-        return uct(depth, self.trials)
+        self.uct = UCT(self.mdp)
+        action = self.uct(self._belief, depth, self.T, self.trials, self.C)
+        return action
 
     def update(self, action, reward):
         alpha, beta = self._belief[action]

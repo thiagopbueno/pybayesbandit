@@ -59,6 +59,11 @@ def parse_args():
         help='number of trials in Monte-Carlo sampling (default=30)'
     )
     parser.add_argument(
+        '-C',
+        type=float, default=2.0,
+        help='UCT exploration constant (default=2.0)'
+    )
+    parser.add_argument(
         '-e', '--episodes',
         type=int, default=200,
         help='number of simulation episodes (default=200)'
@@ -84,7 +89,7 @@ def parse_args():
 def show_args(args):
     if args.verbose:
         if args.learner == 'uct':
-            print('>> learner  = {}(trials={}, maxdepth={})'.format(args.learner, args.trials, args.maxdepth))
+            print('>> learner  = {}(trials={}, maxdepth={}, C={})'.format(args.learner, args.trials, args.maxdepth, args.C))
         else:
             print('>> learner  = {}'.format(args.learner))
         print('>> bandit   = {}({})'.format(args.bandit, args.params))

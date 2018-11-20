@@ -47,9 +47,8 @@ class Node():
 
 class MCTS(metaclass=abc.ABCMeta):
 
-    def __init__(self, mdp, start):
+    def __init__(self, mdp):
         self.mdp = mdp
-        self.start = start
         self.nodes = {}
 
     @abc.abstractmethod
@@ -64,12 +63,19 @@ class MCTS(metaclass=abc.ABCMeta):
     def init_q_value(self, node, d):
         raise NotImplementedError
 
-    def __call__(self, max_depth, trials):
-        n0 = Node(self.start)
+    @abc.abstractmethod
+    def heuristic(self, state):
+        raise NotImplementedError
+
+    def __call__(self, start, max_depth, horizon, trials, C=2):
+        self.max_depth = max_depth
+        self.horizon = horizon
+
+        n0 = Node(start)
         self.nodes[n0] = n0
 
-        for _ in range(trials):
-            self._trial(n0, max_depth)
+        for i in range(trials):
+            self._trial(n0, max_depth, C)
 
         best_q_value = -sys.maxsize
         best_action_node = None
@@ -80,20 +86,20 @@ class MCTS(metaclass=abc.ABCMeta):
 
         return best_action_node.action
 
-    def _trial(self, node, depth):
+    def _trial(self, node, depth, C):
         r = 0.0
         if depth == 0:
-            return r
+            return self.heuristic(node.state)
 
         if node.is_decision():
 
             if node.is_leaf(): # expand decision node
                 for action in range(self.mdp.actions):
-                    succ_node = Node(node.state, action, visits=0, value=0.0, succ=[])
+                    succ_node = Node(node.state, action)
                     node.succ.append(succ_node)
                 next_node = node.succ[0]
             else: # traverse tree
-                next_node = self.tree_policy(node)
+                next_node = self.tree_policy(node, C)
 
         else: # node.is_chance() == True
 
@@ -118,24 +124,24 @@ class MCTS(metaclass=abc.ABCMeta):
 
                 depth -= 1
 
-        r += self._trial(next_node, depth)
+        r += self._trial(next_node, depth, C)
         self._backup(node, r)
 
         return r
 
-    def _rollout(self, state, action, depth):
-        total = 0.0
+    # def _rollout(self, state, action, depth):
+    #     total = 0.0
 
-        next_state = self.mdp.sample(state, action)
-        total += self.mdp.reward(state, action, next_state)
+    #     next_state = self.mdp.sample(state, action)
+    #     total += self.mdp.reward(state, action, next_state)
 
-        for step in range(depth-1):
-            state = next_state
-            action = self.default_policy(state)
-            next_state = self.mdp.sample(state, action)
-            total += self.mdp.reward(state, action, next_state)
+    #     for step in range(depth-1):
+    #         state = next_state
+    #         action = self.default_policy(state)
+    #         next_state = self.mdp.sample(state, action)
+    #         total += self.mdp.reward(state, action, next_state)
 
-        return total
+    #     return total
 
     def _backup(self, node, r):
         node.visits += 1

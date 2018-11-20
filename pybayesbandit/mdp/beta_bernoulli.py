@@ -33,9 +33,12 @@ class BetaBernoulliMDP(BeliefMDP):
         '''
         Sample from belief-state transition.
         '''
-        probs, next_beliefs = zip(*self.transition(belief, action))
-        i = np.squeeze(np.where(np.random.multinomial(1, probs) == 1))
-        return next_beliefs[i]
+        alpha, beta = belief[action]
+        theta = alpha / (alpha + beta)
+        r = int(np.random.sample() >= theta)
+        next_belief = tuple((params[0] + r, params[1] + 1 - r) if i == action else params \
+            for i, params in enumerate(belief))
+        return next_belief
 
     # def sample(self, belief, action):
     #     '''
