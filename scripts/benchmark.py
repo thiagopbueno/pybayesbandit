@@ -23,13 +23,54 @@ from pybayesbandit.learners.thompson import ThompsonSamplingPolicy
 from pybayesbandit.learners.vi import BetaBernoulliVIPolicy
 from pybayesbandit.learners.uct import BetaBernoulliUCTPolicy
 from pybayesbandit.learners.lookahead import LookaheadTreeSearchPolicy
-from pybayesbandit.game import Game
+from pybayesbandit.games.totalregret import TotalRegretGame
+from pybayesbandit.games.simpleregret import SimpleRegretGame
+
 
 from collections import namedtuple
 import matplotlib.pyplot as plt
 import numpy as np
 import time
 import sys
+
+
+def plot_results(game_type, results, deltas, Ks, i, T):
+
+    fig.add_subplot(len(deltas), len(Ks), i)
+
+    if game_type == 'total':
+
+        rounds = range(1, T+1)
+        for name, (rewards, regrets) in results.items():
+            plt.plot(rounds, regrets[0], label=name)
+            # plt.fill_between(rounds, regrets[0] - regrets[1], regrets[0] + regrets[1], alpha=0.2)
+
+        plt.title('Cumulative Regret ($K={}, \\Delta={}$)'.format(K, delta), fontweight='bold')
+        plt.xlabel('rounds (t)')
+        plt.xticks(np.arange(1, 11, dtype=np.int32) * int(T / 10))
+        plt.legend()
+        plt.grid()
+        plt.tight_layout()
+
+    elif game_type == 'simple':
+
+        learners, regrets = list(results.keys()), list(results.values())
+        avg_regret = [r[0] for r in regrets]
+        std_regret = [r[1] for r in regrets]
+
+        opacity = 0.4
+        error_config = {'ecolor': '0.3'}
+
+        plt.bar(learners, avg_regret, 0.35,
+            alpha=opacity, color='b',
+            yerr=std_regret, error_kw=error_config)
+
+        plt.title('Simple Regret ($K={}, \\Delta={}$)'.format(K, delta), fontweight='bold')
+        plt.xlabel('learner')
+        plt.grid(axis='y')
+        plt.tight_layout()
+
+
 
 UCTParams = namedtuple('Params', 'trials maxdepth C')
 AOTreeParams = namedtuple('Params', 'maxdepth')
@@ -44,16 +85,24 @@ policies = {
     'AOTree(depth=3)': (LookaheadTreeSearchPolicy, AOTreeParams(maxdepth=3)),
     # 'AOTree(depth=4)': (LookaheadTreeSearchPolicy, AOTreeParams(maxdepth=4)),
     # 'AOTree(depth=5)': (LookaheadTreeSearchPolicy, AOTreeParams(maxdepth=5))
-    'UCT(trials=64, depth=3, C=2)': (BetaBernoulliUCTPolicy, UCTParams(trials=64, maxdepth=3, C=2)),
+    # 'UCT(trials=64, depth=3, C=2)': (BetaBernoulliUCTPolicy, UCTParams(trials=64, maxdepth=3, C=2)),
     # 'UCT(trials=64, depth=3, C=5)': (BetaBernoulliUCTPolicy, UCTParams(trials=64, maxdepth=3, C=5)),
-    # 'UCT(trials=64, depth=3, C=10)': (BetaBernoulliUCTPolicy, UCTParams(trials=64, maxdepth=3, C=10)),
-    'UCT(trials=256, depth=4, C=2)': (BetaBernoulliUCTPolicy, UCTParams(trials=256, maxdepth=4, C=2)),
+    'UCT(trials=64, depth=3, C=10)': (BetaBernoulliUCTPolicy, UCTParams(trials=64, maxdepth=3, C=10)),
+    # 'UCT(trials=256, depth=4, C=2)': (BetaBernoulliUCTPolicy, UCTParams(trials=256, maxdepth=4, C=2)),
     # 'UCT(trials=256, depth=4, C=5)': (BetaBernoulliUCTPolicy, UCTParams(trials=256, maxdepth=4, C=5)),
-    # 'UCT(trials=256, depth=4, C=10)': (BetaBernoulliUCTPolicy, UCTParams(trials=256, maxdepth=4, C=10)),
+    'UCT(trials=256, depth=4, C=10)': (BetaBernoulliUCTPolicy, UCTParams(trials=256, maxdepth=4, C=10)),
 }
 
-N = 50
-T = 300
+games = {
+    'total': TotalRegretGame,
+    'simple': SimpleRegretGame
+}
+
+filename = sys.argv[1]
+game_type = sys.argv[2]
+
+N = 100
+T = 200
 
 Ks = [2]
 deltas = [0.15, 0.25, 0.35]
@@ -82,29 +131,16 @@ for delta in deltas:
             else:
                 learner = policy(bandit.size, T)
 
-            game = Game(bandit, learner)
+            game = games[game_type](bandit, learner)
             results[name] = game.run(N, T)
 
             end = time.time()
             uptime = end - start
             print('done in {:.4f} sec.'.format(uptime))
 
-        fig.add_subplot(len(deltas), len(Ks), i)
-
-        rounds = range(1, T+1)
-        for name, (rewards, regrets) in results.items():
-            plt.plot(rounds, regrets[0], label=name)
-            # plt.fill_between(rounds, regrets[0] - regrets[1], regrets[0] + regrets[1], alpha=0.2)
-
-        plt.title('Cumulative Regret ($K={}, \\Delta={}$)'.format(K, delta), fontweight='bold')
-        plt.xlabel('rounds (t)')
-        plt.xticks(np.arange(1, 11, dtype=np.int32) * int(T / 10))
-        plt.legend()
-        plt.grid()
-        plt.tight_layout()
+        plot_results(game_type, results, deltas, Ks, i, T)
 
         i += 1
 
 
-filename = sys.argv[1]
 plt.savefig('{}.pdf'.format(filename), format='pdf')

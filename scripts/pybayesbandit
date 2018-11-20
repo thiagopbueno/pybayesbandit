@@ -24,7 +24,8 @@ from pybayesbandit.learners.vi import BetaBernoulliVIPolicy
 from pybayesbandit.learners.uct import BetaBernoulliUCTPolicy
 from pybayesbandit.learners.rollout import RolloutPolicy
 from pybayesbandit.learners.lookahead import LookaheadTreeSearchPolicy
-from pybayesbandit.game import Game
+from pybayesbandit.games.totalregret import TotalRegretGame
+from pybayesbandit.games.simpleregret import SimpleRegretGame
 
 import argparse
 import matplotlib.pyplot as plt
@@ -43,6 +44,11 @@ def parse_args():
         'bandit',
         type=str, choices=['bernoulli'],
         help='bandit type'
+    )
+    parser.add_argument(
+        'game',
+        type=str, choices=['total', 'simple'],
+        help='game setting'
     )
     parser.add_argument(
         '-p', '--params',
@@ -122,22 +128,35 @@ def make_learner(args):
     return policy(actions, args.horizon, args)
 
 
-def report(results):
-    rewards, regrets = results
+def make_game(args, bandit, learner):
+    games = {
+        'total': TotalRegretGame,
+        'simple': SimpleRegretGame
+    }
+    return games[args.game](bandit, learner)
+
+
+def report(args, results):
     print('Results:')
-    print('>> Reward = {:8.4f} ± {:3.4f}'.format(rewards[0][-1], rewards[1][-1]))
-    print('>> Regret = {:8.4f} ± {:3.4f}'.format(regrets[0][-1], regrets[1][-1]))
-    print()
+    if args.game == 'total':
+        rewards, regrets = results
+        print('>> Reward = {:8.4f} ± {:3.4f}'.format(rewards[0][-1], rewards[1][-1]))
+        print('>> Regret = {:8.4f} ± {:3.4f}'.format(regrets[0][-1], regrets[1][-1]))
+        print()
+    elif args.game == 'simple':
+        avg_simple_regret, std_simple_regret = results
+        print('>> Simple regret = {:8.4f} ± {:3.4f}'.format(avg_simple_regret, std_simple_regret))
 
 
-def plot(results):
-    plt.plot(results[1][0])
-    plt.title('Regret', fontweight='bold')
-    plt.ylabel('cumulative regret')
-    plt.xlabel('rounds (t)')
-    plt.grid()
-    plt.tight_layout()
-    plt.show()
+def plot(args, results):
+    if args.game == 'total':
+        plt.plot(results[1][0])
+        plt.title('Regret', fontweight='bold')
+        plt.ylabel('cumulative regret')
+        plt.xlabel('rounds (t)')
+        plt.grid()
+        plt.tight_layout()
+        plt.show()
 
 
 if __name__ == '__main__':
@@ -150,13 +169,13 @@ if __name__ == '__main__':
 
     bandit = make_bandit(args)
     learner = make_learner(args)
-    game = Game(bandit, learner)
+    game = make_game(args, bandit, learner)
 
     results = game.run(args.episodes, args.horizon)
 
     end = time.time()
     print('Done in {:.3f} sec.\n'.format(end - start))
 
-    report(results)
+    report(args, results)
     if args.plot:
-        plot(results)
+        plot(args, results)

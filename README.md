@@ -12,17 +12,18 @@ $ pip install pybayesbandit
 
 ```text
 $ pybayesbandit --help
-
 usage: pybayesbandit [-h] [-p PARAMS [PARAMS ...]] [-d MAXDEPTH] [-t TRIALS]
-                     [-e EPISODES] [-hr HORIZON] [-v]
-                     {random,ucb,thompson,vi,uct} {bernoulli}
+                     [-C C] [-e EPISODES] [-hr HORIZON] [--plot] [-v]
+                     {random,ucb,thompson,vi,uct,rollout,aotree} {bernoulli}
+                     {total,simple}
 
 Bayesian bandits in Python3.
 
 positional arguments:
-  {random,ucb,thompson,vi,uct}
+  {random,ucb,thompson,vi,uct,rollout,aotree}
                         learner type
   {bernoulli}           bandit type
+  {total,simple}        game setting
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -33,58 +34,60 @@ optional arguments:
                         (default=10)
   -t TRIALS, --trials TRIALS
                         number of trials in Monte-Carlo sampling (default=30)
+  -C C                  UCT exploration constant (default=2.0)
   -e EPISODES, --episodes EPISODES
                         number of simulation episodes (default=200)
   -hr HORIZON, --horizon HORIZON
                         number of timesteps in each episode (default=100)
+  --plot                plot cumulative regret
   -v, --verbose         verbose mode
 ```
 
 ## Examples
 
 ```text
-$ pybayesbandit ucb bernoulli -p 0.5 0.8 0.3 -e 100 -hr 50 -v
+$ pybayesbandit ucb bernoulli total -p 0.5 0.8 0.3 -e 100 -hr 50 -v
 
 Running pybayesbandit ...
 >> learner  = ucb
 >> bandit   = bernoulli([0.5, 0.8, 0.3])
 >> episodes = 100
 >> horizon  = 50
-Done in 0.208 sec.
+Done in 0.257 sec.
 
 Results:
->> Reward =  32.4200 ± 3.1912
->> Regret =   7.5990 ± 1.4146
+>> Reward =  32.3900 ± 3.4173
+>> Regret =   7.6530 ± 1.7081
 ```
 
 ```text
-$ pybayesbandit thompson bernoulli -p 0.5 0.8 0.3 -e 100 -hr 50 -v
+$ pybayesbandit thompson bernoulli total -p 0.5 0.8 0.3 -e 100 -hr 50 -v
 
 Running pybayesbandit ...
 >> learner  = thompson
 >> bandit   = bernoulli([0.5, 0.8, 0.3])
 >> episodes = 100
 >> horizon  = 50
-Done in 0.213 sec.
+Done in 0.297 sec.
 
 Results:
->> Reward =  35.4500 ± 3.6943
->> Regret =   4.3990 ± 2.2248
+>> Reward =  35.2200 ± 3.8822
+>> Regret =   4.4560 ± 2.6086
 ```
 
 ```text
-$ pybayesbandit uct bernoulli -p 0.5 0.8 0.3 -e 100 -hr 50 --trials 15 --maxdepth 5 -v
+$ pybayesbandit uct bernoulli total -p 0.5 0.8 0.3 -e 100 -hr 50 --trials 15 --maxdepth 5 -v
 
 Running pybayesbandit ...
->> learner  = uct(trials=15, maxdepth=5)
+>> learner  = uct(trials=15, maxdepth=5, C=2.0)
 >> bandit   = bernoulli([0.5, 0.8, 0.3])
 >> episodes = 100
 >> horizon  = 50
-Done in 8.262 sec.
+Done in 7.066 sec.
 
 Results:
->> Reward =  36.1500 ± 5.2103
->> Regret =   4.1380 ± 4.6643
+>> Reward =  36.2800 ± 5.4828
+>> Regret =   3.4360 ± 4.5856
 ```
 
 ## License

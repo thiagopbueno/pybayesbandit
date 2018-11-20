@@ -13,15 +13,15 @@
 # You should have received a copy of the GNU General Public License
 # along with pybayesbandit. If not, see <http://www.gnu.org/licenses/>.
 
+from pybayesbandit.games import Game
 
 import numpy as np
 
 
-class Game():
+class TotalRegretGame(Game):
 
     def __init__(self, bandit, learner):
-        self.bandit = bandit
-        self.learner = learner
+        super().__init__(bandit, learner)
 
     def episode(self, T):
         self.learner.reset()
