@@ -22,6 +22,7 @@ from pybayesbandit.learners.ucb import UCBPolicy
 from pybayesbandit.learners.thompson import ThompsonSamplingPolicy
 from pybayesbandit.learners.vi import BetaBernoulliVIPolicy
 from pybayesbandit.learners.uct import BetaBernoulliUCTPolicy
+from pybayesbandit.learners.lookahead import LookaheadTreeSearchPolicy
 from pybayesbandit.game import Game
 
 from collections import namedtuple
@@ -30,23 +31,32 @@ import numpy as np
 import time
 import sys
 
-UCTParams = namedtuple('UCTParams', 'trials maxdepth')
+UCTParams = namedtuple('Params', 'trials maxdepth C')
+AOTreeParams = namedtuple('Params', 'maxdepth')
 
 policies = {
     # 'Random': RandomPolicy,
     'UCB1': UCBPolicy,
     'TS': ThompsonSamplingPolicy,
     # 'VI': BetaBernoulliVIPolicy,
-    'UCT(T=15, D=15)': (BetaBernoulliUCTPolicy, UCTParams(trials=15, maxdepth=15)),
-    'UCT(T=15, D=30)': (BetaBernoulliUCTPolicy, UCTParams(trials=15, maxdepth=30)),
-    'UCT(T=15, D=100)': (BetaBernoulliUCTPolicy, UCTParams(trials=15, maxdepth=100))
+    'AOTree(depth=1)': (LookaheadTreeSearchPolicy, AOTreeParams(maxdepth=1)),
+    'AOTree(depth=2)': (LookaheadTreeSearchPolicy, AOTreeParams(maxdepth=2)),
+    'AOTree(depth=3)': (LookaheadTreeSearchPolicy, AOTreeParams(maxdepth=3)),
+    # 'AOTree(depth=4)': (LookaheadTreeSearchPolicy, AOTreeParams(maxdepth=4)),
+    # 'AOTree(depth=5)': (LookaheadTreeSearchPolicy, AOTreeParams(maxdepth=5))
+    'UCT(trials=64, depth=3, C=2)': (BetaBernoulliUCTPolicy, UCTParams(trials=64, maxdepth=3, C=2)),
+    # 'UCT(trials=64, depth=3, C=5)': (BetaBernoulliUCTPolicy, UCTParams(trials=64, maxdepth=3, C=5)),
+    # 'UCT(trials=64, depth=3, C=10)': (BetaBernoulliUCTPolicy, UCTParams(trials=64, maxdepth=3, C=10)),
+    'UCT(trials=256, depth=4, C=2)': (BetaBernoulliUCTPolicy, UCTParams(trials=256, maxdepth=4, C=2)),
+    # 'UCT(trials=256, depth=4, C=5)': (BetaBernoulliUCTPolicy, UCTParams(trials=256, maxdepth=4, C=5)),
+    # 'UCT(trials=256, depth=4, C=10)': (BetaBernoulliUCTPolicy, UCTParams(trials=256, maxdepth=4, C=10)),
 }
 
-N = 10
-T = 1000
+N = 50
+T = 300
 
-Ks = [2, 10, 20]
-deltas = [0.05, 0.25, 0.40]
+Ks = [2]
+deltas = [0.15, 0.25, 0.35]
 
 fig = plt.figure(figsize=(20, 10))
 
@@ -86,7 +96,7 @@ for delta in deltas:
             plt.plot(rounds, regrets[0], label=name)
             # plt.fill_between(rounds, regrets[0] - regrets[1], regrets[0] + regrets[1], alpha=0.2)
 
-        plt.title('Regret (K={}, delta={})'.format(K, delta), fontweight='bold')
+        plt.title('Cumulative Regret ($K={}, \\Delta={}$)'.format(K, delta), fontweight='bold')
         plt.xlabel('rounds (t)')
         plt.xticks(np.arange(1, 11, dtype=np.int32) * int(T / 10))
         plt.legend()
